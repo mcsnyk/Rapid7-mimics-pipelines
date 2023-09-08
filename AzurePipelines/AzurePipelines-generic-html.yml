@@ -1,0 +1,13 @@
+# Example pipeline to run the mimics tool in Azure pipleines
+
+trigger:
+  batch: true
+
+# NOTE: Change this to a different pool to run the scripts.
+pool:
+  vmImage: ubuntu-latest
+
+steps:
+- task:
+  inputs:
+    serviceConnectionEndpoint: 'RAPID7_TOKEN'
