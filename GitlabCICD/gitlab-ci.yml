@@ -1,0 +1,49 @@
+# Example script for a GitLab CI/CD Pipeline to run mimics and scan IaC scripts 
+
+stages:
+  - install
+  - terraform
+  - scan
+
+# Install the mimics-binary:
+install_mimics:
+  stage: install
+  script:
+    - wget https://artifacts.rapid7.com/cloudsec/mimics/latest/mimics_latest_linux_arm64 -O mimics
+    - chmod +x mimics
+  artifacts:
+    paths:
+      - mimics
+      
+# Install and initialize Terraform.
+# We have to ensure that Terraform is installed or updated to the specified version (0.14.11 in this case) before subsequent stages in the pipeline run.
+install_terraform:
+  stage: terraform
+  script:
+    - if [ ! -f /usr/local/bin/terraform ]; then
+        wget https://releases.hashicorp.com/terraform/0.14.11/terraform_0.14.11_linux_arm64.zip;
+        unzip terraform_0.14.11_linux_arm64.zip -d terraform_temp;
+        chmod +x terraform_temp/terraform;
+        mv terraform_temp/terraform /usr/local/bin/;  
+      else
+        mv /usr/local/bin/terraform /usr/local/bin/terraform.old;
+        wget https://releases.hashicorp.com/terraform/0.14.11/terraform_0.14.11_linux_arm64.zip;
+        unzip terraform_0.14.11_linux_arm64.zip -d terraform_temp;
+        chmod +x terraform_temp/terraform;
+        mv terraform_temp/terraform /usr/local/bin/;
+      fi
+
+# Scanning the IaC files - make sure to choose a proper report name and report format
+# Also please make sure to enter your correct BaseURL!
+scan_with_mimics:
+  stage: scan
+  script:
+    - ./mimics scan "$CI_PROJECT_DIR" --api-key "$API_KEY" --base-url "$BASE_URL" --no-verify --log-format json --report-formats all --report-name probe --save-report --no-fail --verbose
+  dependencies:
+    - install_mimics
+    - install_terraform
+  artifacts:
+    when: always
+    # Depending on the name and format (in this case a sarif, html and xml file will be packed into an archive):
+    paths:
+      - "probe.*"
