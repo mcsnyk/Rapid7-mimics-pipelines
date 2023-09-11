@@ -15,11 +15,29 @@ Select the organisation where your project is held and click "Install".
 You can always check the installed plugins in your Azure DevOps organisation settings >> Extensions
 ![](resources/azure-pipelines-extensions.png)
 
-2. Configure the pipeline by using this configuration yaml-file as an example
-3. We have to define the "API_KEY" and "BASE_URL" variables in order to run the pipeline. Please select the "Variables" option first. 
+2. Configure the pipeline by using ![this configuration yaml-file](https://github.com/mcsnyk/Rapid7-mimics-pipelines/blob/main/AzurePipelines/AzurePipelines-generic-html.yml) as an example. If you don't have any pipelines for your project, select the Pipelines >> Create pipeline option.
+![](resources/azure-pipelines-creating-pipeline.png) 
+
+3. We now have to define the "API_KEY" and "BASE_URL" variables in order to run the pipeline. Please select the "Variables" option first. 
 ![](resources/azure-pipelines-variables.png)    
 ![](resources/azure-pipelines-variables2.png)
 
-4. Let's run our pipeline! 
+4. Let's run our pipeline! In the example script we used the latest ubuntu image, please feel free to use another vmImage or even your own custom pool.     
+    
+:wrench: Here is a list of the available binaries of the mimics tool:
+- [macOS Universal](https://artifacts.rapid7.com/cloudsec/mimics/v1.2.5/mimics_1.2.5_darwin_all)
+- [Linux x86-64](https://artifacts.rapid7.com/cloudsec/mimics/v1.2.5/mimics_1.2.5_linux_amd64)
+- [Linux ARM](https://artifacts.rapid7.com/cloudsec/mimics/v1.2.5/mimics_1.2.5_linux_arm64)
+- [Windows x86-64](https://artifacts.rapid7.com/cloudsec/mimics/v1.2.5/mimics_1.2.5_windows_amd64.exe)
+- [Windows ARM](https://artifacts.rapid7.com/cloudsec/mimics/v1.2.5/mimics_1.2.5_windows_arm64.exe)
+
+During the pipeline exectution we can look inside the pipeline and observe the findings and remediation advice provided by the mimics tool:
+![](resources/azure-pipelines-execution.png)
+
+5. After the pipeline run, we can take a look at the results and the published artifacts. On the Summary tab we can find the artifacts and the results of the different jobs. The output of the mimics tool can be configured (available extentions: XML, SARIF and HTML, or all of them).
+![](resources/azure-pipelines-summary.png)    
+ 
+6. As we added the HTML Viewer tool, we can immediately observe our vulnerabilities on a separate tab, the HTML Viewer tab.
+![](resources/azure-pipelines-html-viewer-results.png)
 
 
