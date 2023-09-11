@@ -41,9 +41,9 @@ During the pipeline exectution we can look inside the pipeline and observe the f
 <img src="resources/azure-pipelines-html-viewer-results.png" width="1024"> 
 
 7. We have the option to send the results immediately to the insideCloudSec webUI. On the Security >> Infrastructure as Code tab we can see the results of the pipeline run. If we change the applied Configuration, we can apply different built-in (industry-standard) or custom rulesets "Insights".
-<img src="resources/azure-pipelines-ics-iac.png" width="1024">
+<img src="resources/azure-pipelines-ics-iac2.png" width="1024">
 
 8. If we hover the mouse over the "Outcome" field, we can really look inside of a given scan. We don't only see the name, severity or number of the impacted resources, but we can immediately take action and observe the issues!
-<img src="resources/azure-pipelines-ics-findings.png" width="1024">
+<img src="resources/azure-pipelines-ics-findings2.png" width="1024">
 
 
