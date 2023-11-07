@@ -30,7 +30,6 @@ Installing_Scanner_Dependencies:
     - terraform init
     - terraform plan -out tf.plan
     - terraform show -json tf.plan > plan.json
-    - ls -l $CI_PROJECT_DIR
     - echo "plan.json created"
   artifacts:
     paths:
@@ -42,11 +41,9 @@ InsightCloudSec_Scanning_and_Creating_Artifacts:
     - echo "Installing Mimics"
     - wget https://artifacts.rapid7.com/cloudsec/mimics/v1.2.5/mimics_1.2.5_linux_amd64 -O /usr/local/bin/mimics
     - chmod +x /usr/local/bin/mimics
-    - echo "Installing Mimics and Running Mimics Scan"
-    - ls -l $CI_PROJECT_DIR 
+    - echo "Installing ICS Mimics and running a Mimics Scan"
     - mkdir -p $CI_PROJECT_DIR/mimics-reports
-    - ls -l $CI_PROJECT_DIR 
-    - /usr/local/bin/mimics scan $CI_PROJECT_DIR --api-key $API_KEY --base-url $BASE_URL --no-verify --ics-config "AWS CIS Benchmark 1.4" --log-format json --report-formats all --report-name results-rapid7_iac --no-fail --verbose
+    - /usr/local/bin/mimics scan $CI_PROJECT_DIR --api-key $API_KEY --base-url $BASE_URL --no-verify --ics-config "AWS CIS Benchmark 1.4" --log-format json --report-formats all --report-name results-rapid7_iac --save-reports --no-fail --verbose
     - mv $CI_PROJECT_DIR/*.html $CI_PROJECT_DIR/*.xml $CI_PROJECT_DIR/*.sarif $CI_PROJECT_DIR/mimics-reports/
   only:
     - main
