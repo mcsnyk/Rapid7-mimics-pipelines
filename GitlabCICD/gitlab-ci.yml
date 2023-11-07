@@ -8,7 +8,7 @@ variables:
   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
   AWS_DEFAULT_REGION: eu-central-1
 
-Rapid7_IaC_Scanner:
+Installing_Scanner_Dependencies:
   stage: configure
   script:
     - apt-get update -qy
@@ -36,7 +36,7 @@ Rapid7_IaC_Scanner:
     paths:
       - plan.json
 
-Mimics_Move_Reports:
+InsightCloudSec_Scanning_and_Creating_Artifacts:
   stage: scan
   script:
     - echo "Installing Mimics"
@@ -54,3 +54,4 @@ Mimics_Move_Reports:
     when: always
     paths:
       - $CI_PROJECT_DIR/mimics-reports/results-rapid7_iac.*
+      
