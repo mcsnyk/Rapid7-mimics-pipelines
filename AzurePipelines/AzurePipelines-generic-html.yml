@@ -54,7 +54,7 @@ jobs:
   - script: |
       # Use the installed Mimics tool for scanning
       mkdir -p $(System.DefaultWorkingDirectory)/mimics-reports
-      $(Agent.ToolsDirectory)/mimics scan $(System.DefaultWorkingDirectory) --api-key $(API_KEY) --base-url $(BASE_URL) --no-verify --ics-config "ICS Demo NIST PRD Fail" --log-format json --report-formats all --report-name results-rapid7_iac  --report-path "$(System.DefaultWorkingDirectory)/mimics-reports" --no-fail --verbose
+      $(Agent.ToolsDirectory)/mimics scan $(System.DefaultWorkingDirectory) --api-key $(API_KEY) --base-url $(BASE_URL) --no-verify --ics-config "ICS Demo NIST PRD Fail" --log-format json --report-formats all --report-name results-rapid7_iac --report-path "$(System.DefaultWorkingDirectory)/mimics-reports" --save-report --no-fail --verbose
     displayName: 'Scan IaC files with Mimics'
 
   # Publish additional files (results-rapid7_iac artifacts)
