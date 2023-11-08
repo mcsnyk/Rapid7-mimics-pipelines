@@ -51,7 +51,7 @@ jobs:
       -v $(System.DefaultWorkingDirectory):/data \
       -e MIMICS_BASE_URL=$(BASE_URL) \
       -e MIMICS_API_KEY=$(API_KEY) \
-      public.ecr.aws/rapid7-insightcloudsec/ics/mimics:latest scan /data/plan.json --no-verify --ics-config "ICS Demo NIST PRD Fail" --log-format json --report-formats all --report-name results-rapid7_iac --report-path "data/mimics-reports" --no-fail --verbose
+      public.ecr.aws/rapid7-insightcloudsec/ics/mimics:latest scan /data/plan.json --no-verify --ics-config "ICS Demo NIST PRD Fail" --log-format json --report-formats all --report-name results-rapid7_iac --report-path "data/mimics-reports" --save-report --no-fail --verbose
     displayName: 'Scan IaC files with Mimics'
 
   # Publish additional files (results-rapid7_iac artifacts)
