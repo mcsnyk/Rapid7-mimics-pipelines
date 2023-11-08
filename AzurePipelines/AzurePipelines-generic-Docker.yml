@@ -1,0 +1,69 @@
+trigger:
+- '*'
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+jobs:
+- job: Rapid7_IaC_Scanner
+  displayName: 'Rapid7 IaC scanner'
+  steps:
+  - script: |
+      # Configure AWS CLI with access key, secret key, and region
+      aws configure set aws_access_key_id $(AWS_ACCESS_KEY_ID)
+      aws configure set aws_secret_access_key $(AWS_SECRET_ACCESS_KEY)
+      aws configure set region eu-central-1
+    displayName: 'Configuring the Cloud Provider CLI'
+    
+  - script: |      
+      # Check if Terraform is already installed, and download it if necessary
+      if [ ! -f /usr/local/bin/terraform ]; then
+          wget https://releases.hashicorp.com/terraform/0.14.11/terraform_0.14.11_linux_amd64.zip
+      else
+          mv /usr/local/bin/terraform /usr/local/bin/terraform.old
+          wget https://releases.hashicorp.com/terraform/0.14.11/terraform_0.14.11_linux_amd64.zip
+      fi
+      
+      # Unzip and install Terraform
+      unzip terraform_0.14.11_linux_amd64.zip -d terraform_temp
+      chmod +x terraform_temp/terraform
+      mv terraform_temp/terraform /usr/local/bin/
+
+      # Initialize Terraform, create a plan, and convert it to JSON
+      terraform init
+      terraform plan -out tf.plan
+      terraform show -json tf.plan > $(System.DefaultWorkingDirectory)/plan.json
+    displayName: 'Install and initialize Terraform'
+
+  - script: |
+      # Create a Terraform plan
+      terraform plan -out tf.plan
+    displayName: 'Create Terraform Plan'
+
+  - script: |
+      # Convert the Terraform plan to JSON
+      terraform show -json tf.plan > plan.json
+    displayName: 'Convert Terraform Plan to JSON'
+
+  - script: |
+      # Use Docker to run the Mimics tool for scanning
+      docker run \
+      -v $(System.DefaultWorkingDirectory):/data \
+      -e MIMICS_BASE_URL=$(BASE_URL) \
+      -e MIMICS_API_KEY=$(API_KEY) \
+      public.ecr.aws/rapid7-insightcloudsec/ics/mimics:latest scan /data/plan.json --no-verify --ics-config "ICS Demo NIST PRD Fail" --log-format json --report-formats all --report-name results-rapid7_iac --report-path "data/mimics-reports" --no-fail --verbose
+    displayName: 'Scan IaC files with Mimics'
+
+  # Publish additional files (results-rapid7_iac artifacts)
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Scan Artifacts'
+    inputs:
+      pathtoPublish: '$(System.DefaultWorkingDirectory)/mimics-reports'
+      artifactName: 'results-rapid7_iac'
+
+  # Publish the HTML report using the PublishHtmlReport task
+  - task: PublishHtmlReport@1
+    condition: succeededOrFailed()
+    inputs:
+      reportDir: $(System.DefaultWorkingDirectory)/mimics-reports/results-rapid7_iac.html
+      tabName: 'R7 IaC Scan Results'
