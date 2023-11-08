@@ -53,14 +53,9 @@ jobs:
 
   - script: |
       # Use the installed Mimics tool for scanning
-      $(Agent.ToolsDirectory)/mimics scan $(System.DefaultWorkingDirectory) --api-key $(API_KEY) --base-url $(BASE_URL) --no-verify --ics-config "ICS Demo NIST PRD Fail" --log-format json --report-formats all --report-name results-rapid7_iac --save-report --no-fail --verbose
-    displayName: 'Scan IaC files with Mimics'
-
-  - script: |
-      # Move the HTML, SARIF, and XML reports to a designated directory
       mkdir -p $(System.DefaultWorkingDirectory)/mimics-reports
-      mv $(System.DefaultWorkingDirectory)/*.html $(System.DefaultWorkingDirectory)/*.xml $(System.DefaultWorkingDirectory)/*.sarif $(System.DefaultWorkingDirectory)/mimics-reports/
-    displayName: 'Move HTML, SARIF, and XML Reports'
+      $(Agent.ToolsDirectory)/mimics scan $(System.DefaultWorkingDirectory) --api-key $(API_KEY) --base-url $(BASE_URL) --no-verify --ics-config "ICS Demo NIST PRD Fail" --log-format json --report-formats all --report-name results-rapid7_iac  --report-path "$(System.DefaultWorkingDirectory)/mimics-reports" --no-fail --verbose
+    displayName: 'Scan IaC files with Mimics'
 
   # Publish additional files (results-rapid7_iac artifacts)
   - task: PublishBuildArtifacts@1
