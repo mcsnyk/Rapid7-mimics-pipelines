@@ -15,7 +15,7 @@ Select the organisation where your project is held and click `Install`.
 You can always check the installed plugins in your Azure DevOps organisation settings >> Extensions
 <img src="resources/azure-pipelines-extensions.png" width="1024"> 
 
-2. Configure the pipeline by using [this configuration yaml-file](https://github.com/mcsnyk/Rapid7-mimics-pipelines/blob/main/AzurePipelines/AzurePipelines-generic-html.yml) as an example. If you don't have any pipelines for your project, select the Pipelines >> Create pipeline option.
+2. Configure the pipeline by using [this configuration yaml-file](https://github.com/mcsnyk/Rapid7-mimics-pipelines/blob/main/AzurePipelines/AzurePipelines-generic-binary.yml) to install the mimics tool as a binary or [this configuration yaml-file](https://github.com/mcsnyk/Rapid7-mimics-pipelines/blob/main/AzurePipelines/AzurePipelines-Docker.yml) to use mimics as a Container in your pipeline - as an example. If you don't have any pipelines for your project, select the Pipelines >> Create pipeline option.
 <img src="resources/azure-pipelines-creating-pipeline.png" width="1024"> 
 
 3. We now have to define the `API_KEY` and `BASE_URL` variables in order to run the pipeline. Please select the "Variables" option first. Please also make sure that you have configured the connection to your cloud provider (in the provided example I show how to configure the AWS CLI by providing the `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`). It is needed, because Terraform needs to create a json file based on the IaC files, the mimics tool is able to parse it through and assess misconfigurations in it. 
