@@ -43,7 +43,7 @@ InsightCloudSec_Scanning_and_Creating_Artifacts:
     - chmod +x /usr/local/bin/mimics
     - echo "Installing ICS Mimics and running a Mimics Scan"
     - mkdir -p $CI_PROJECT_DIR/mimics-reports
-    - /usr/local/bin/mimics scan $CI_PROJECT_DIR --api-key $API_KEY --base-url $BASE_URL --no-verify --ics-config "AWS CIS Benchmark 1.4" --log-format json --report-formats all --report-name results-rapid7_iac --save-reports --no-fail --verbose
+    - /usr/local/bin/mimics scan $CI_PROJECT_DIR --api-key $API_KEY --base-url $BASE_URL --no-verify --ics-config "AWS CIS Benchmark 1.4" --log-format json --report-formats all --report-name results-rapid7_iac --save-report --no-fail --verbose
     - mv $CI_PROJECT_DIR/*.html $CI_PROJECT_DIR/*.xml $CI_PROJECT_DIR/*.sarif $CI_PROJECT_DIR/mimics-reports/
   only:
     - main
