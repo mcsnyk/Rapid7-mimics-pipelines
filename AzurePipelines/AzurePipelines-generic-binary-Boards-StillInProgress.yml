@@ -1,0 +1,141 @@
+trigger:
+- '*'
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+jobs:
+- job: Rapid7_IaC_Scanner_and_BoardPush
+  displayName: 'Rapid7 IaC scanner'
+  steps:
+  - script: |
+      # Configure AWS CLI with access key, secret key, and region
+      aws configure set aws_access_key_id $(AWS_ACCESS_KEY_ID)
+      aws configure set aws_secret_access_key $(AWS_SECRET_ACCESS_KEY)
+      aws configure set region eu-central-1
+    displayName: 'Configuring the Cloud Provider CLI'
+    
+  - script: |      
+      # Check if Terraform is already installed, and download it if necessary
+      if [ ! -f /usr/local/bin/terraform ]; then
+          wget https://releases.hashicorp.com/terraform/0.14.11/terraform_0.14.11_linux_amd64.zip
+      else
+          mv /usr/local/bin/terraform /usr/local/bin/terraform.old
+          wget https://releases.hashicorp.com/terraform/0.14.11/terraform_0.14.11_linux_amd64.zip
+      fi
+      
+      # Unzip and install Terraform
+      unzip terraform_0.14.11_linux_amd64.zip -d terraform_temp
+      chmod +x terraform_temp/terraform
+      mv terraform_temp/terraform /usr/local/bin/
+
+      # Initialize Terraform, create a plan, and convert it to JSON
+      terraform init
+      terraform plan -out tf.plan
+      terraform show -json tf.plan > $(System.DefaultWorkingDirectory)/plan.json
+    displayName: 'Install and initialize Terraform'
+
+  - script: |
+      # Create a Terraform plan
+      terraform plan -out tf.plan
+    displayName: 'Create Terraform Plan'
+
+  - script: |
+      # Convert the Terraform plan to JSON
+      terraform show -json tf.plan > plan.json
+    displayName: 'Convert Terraform Plan to JSON'
+
+  - script: |
+      # Install the Mimics tool for scanning
+      wget https://artifacts.rapid7.com/cloudsec/mimics/v1.2.5/mimics_1.2.5_linux_amd64 -O $(Agent.ToolsDirectory)/mimics
+      chmod +x $(Agent.ToolsDirectory)/mimics
+    displayName: 'Install Mimics-binary'
+
+  - script: |
+      # Use the installed Mimics tool for scanning
+      mkdir -p $(System.DefaultWorkingDirectory)/mimics-reports
+      $(Agent.ToolsDirectory)/mimics scan $(System.DefaultWorkingDirectory) --api-key $(API_KEY) --base-url $(BASE_URL) --no-verify --ics-config "ICS Demo NIST PRD Fail" --log-format json --report-formats all --report-name results-rapid7_iac  --report-path "$(System.DefaultWorkingDirectory)/mimics-reports" --no-fail --verbose
+    displayName: 'Scan IaC files with Mimics'
+
+  # - script: |
+  #     # Move the HTML, SARIF, and XML reports to a designated directory
+  #     mkdir -p $(System.DefaultWorkingDirectory)/mimics-reports
+  #     mv $(System.DefaultWorkingDirectory)/*.html $(System.DefaultWorkingDirectory)/*.xml $(System.DefaultWorkingDirectory)/*.sarif $(System.DefaultWorkingDirectory)/mimics-reports/
+  #   displayName: 'Move HTML, SARIF, and XML Reports'
+
+  - script: |
+      # Installing jq
+      sudo apt-get update
+      sudo apt-get install -y jq
+    displayName: 'Install jq'
+
+  - script: |
+      # Azure DevOps details
+      organization="Rapid7Demo"
+      project="Demo"
+      pat="$(PAT)"
+      url="https://dev.azure.com/${organization}/${project}/_apis/wit/workitems/\$Task?api-version=6.0"
+  
+      # Path to the SARIF file
+      sarifFile="$(System.DefaultWorkingDirectory)/mimics-reports/results-rapid7_iac.sarif"
+  
+      # Ensure the SARIF file exists and then process it
+      if [ -f "$sarifFile" ]; then
+        echo "Found SARIF file: $sarifFile"
+        
+        # Read through each result in the SARIF file
+        jq -c '.runs[].results[]' "$sarifFile" | while read -r result; do
+          ruleId=$(echo $result | jq -r '.ruleId')
+          message=$(echo $result | jq -r '.message.text')
+        
+          # Create a JSON payload for the Azure DevOps REST API
+          json="[
+            {
+              \"op\": \"add\",
+              \"path\": \"/fields/System.Title\",
+              \"value\": \"${ruleId}\"
+            },
+            {
+              \"op\": \"add\",
+              \"path\": \"/fields/System.Description\",
+              \"value\": \"${message}\"
+            },
+            {
+              \"op\": \"add\",
+              \"path\": \"/fields/System.State\",
+              \"value\": "New"
+            },
+            {
+              \"op\": \"add\",
+              \"path\": \"/fields/System.AreaPath\",
+              \"value\": "Demo"
+            }
+          ]"
+        
+          # Use curl to invoke the Azure DevOps REST API and create a new work item
+          curl -X POST -H "Content-Type: application/json-patch+json" \
+              -H "Authorization: Basic $(echo -n ":$PAT" | base64)" \
+              -d "$json" \
+              "$url"
+        done
+      else
+        echo "SARIF file not found: $sarifFile"
+      fi
+    displayName: 'Process SARIF and Create Azure Board Work Items'
+    env:
+      PAT: $(PAT)
+
+  # Publish additional files (results-rapid7_iac artifacts)
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Scan Artifacts'
+    inputs:
+      pathtoPublish: '$(System.DefaultWorkingDirectory)/mimics-reports'
+      artifactName: 'results-rapid7_iac'
+
+  # Publish the HTML report using the PublishHtmlReport task
+  - task: PublishHtmlReport@1
+    condition: succeededOrFailed()
+    inputs:
+      reportDir: $(System.DefaultWorkingDirectory)/mimics-reports/results-rapid7_iac.html
+      tabName: 'R7 IaC Scan Results'
+      
