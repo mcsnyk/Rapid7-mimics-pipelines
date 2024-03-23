@@ -74,7 +74,9 @@ jobs:
       organization="Rapid7Demo"
       project="Demo"
       pat="$(PAT)"
-      url="https://dev.azure.com/${organization}/${project}/_apis/wit/workitems/\$Task?api-version=6.0"
+
+      url="https://dev.azure.com/${organization}/${project}/_apis/wit/workitems/\$Issue?api-version=6.0"
+      # url="https://dev.azure.com/${organization}/${project}/_apis/wit/workitems/\$Task?api-version=6.0"
   
       # Path to the SARIF file
       sarifFile="$(System.DefaultWorkingDirectory)/mimics-reports/results-rapid7_iac.sarif"
@@ -82,42 +84,32 @@ jobs:
       # Ensure the SARIF file exists and then process it
       if [ -f "$sarifFile" ]; then
         echo "Found SARIF file: $sarifFile"
-        
+
         # Read through each result in the SARIF file
         jq -c '.runs[].results[]' "$sarifFile" | while read -r result; do
           ruleId=$(echo $result | jq -r '.ruleId')
           message=$(echo $result | jq -r '.message.text')
         
+        echo ""
+        echo "=============="
+        echo "Processing ruleId: $ruleId, message: $message"
+        echo "=============="
+        echo ""
+
           # Create a JSON payload for the Azure DevOps REST API
-          json="[
-            {
-              \"op\": \"add\",
-              \"path\": \"/fields/System.Title\",
-              \"value\": \"${ruleId}\"
-            },
-            {
-              \"op\": \"add\",
-              \"path\": \"/fields/System.Description\",
-              \"value\": \"${message}\"
-            },
-            {
-              \"op\": \"add\",
-              \"path\": \"/fields/System.State\",
-              \"value\": "New"
-            },
-            {
-              \"op\": \"add\",
-              \"path\": \"/fields/System.AreaPath\",
-              \"value\": "Demo"
-            }
-          ]"
+          # Note the single quotes around the JSON payload to ensure proper handling
+          json=$(jq -n --arg ruleId "$ruleId" --arg message "$message" '
+            [
+              {"op": "add", "path": "/fields/System.Title", "value": $ruleId},
+              {"op": "add", "path": "/fields/System.Description", "value": $message},
+              {"op": "add", "path": "/fields/System.State", "value": "To Do"},
+              {"op": "add", "path": "/fields/System.AreaPath", "value": "Demo"}
+            ]
+        ')
         
           # Use curl to invoke the Azure DevOps REST API and create a new work item
-          curl -X POST -H "Content-Type: application/json-patch+json" \
-              -H "Authorization: Basic $(echo -n ":$PAT" | base64)" \
-              -d "$json" \
-              "$url"
-        done
+          curl -X POST -H "Content-Type: application/json-patch+json" -H "Authorization: Basic $(echo -n ":$PAT" | base64)" -d "$json" "$url"
+        done      
       else
         echo "SARIF file not found: $sarifFile"
       fi
