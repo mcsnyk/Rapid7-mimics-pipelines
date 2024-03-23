@@ -56,7 +56,8 @@ jobs:
       mkdir -p $(System.DefaultWorkingDirectory)/mimics-reports
       $(Agent.ToolsDirectory)/mimics scan $(System.DefaultWorkingDirectory) --api-key $(API_KEY) --base-url $(BASE_URL) --no-verify --ics-config "ICS Demo NIST PRD Fail" --log-format json --report-formats all --report-name results-rapid7_iac  --report-path "$(System.DefaultWorkingDirectory)/mimics-reports" --no-fail --verbose
     displayName: 'Scan IaC files with Mimics'
-
+  
+  # This step is only for test purposes:
   # - script: |
   #     # Move the HTML, SARIF, and XML reports to a designated directory
   #     mkdir -p $(System.DefaultWorkingDirectory)/mimics-reports
@@ -75,6 +76,7 @@ jobs:
       project="Demo"
       pat="$(PAT)"
 
+      # Pay attention to the correct type of the workitem here in the URL
       url="https://dev.azure.com/${organization}/${project}/_apis/wit/workitems/\$Issue?api-version=6.0"
       # url="https://dev.azure.com/${organization}/${project}/_apis/wit/workitems/\$Task?api-version=6.0"
   
@@ -89,15 +91,16 @@ jobs:
         jq -c '.runs[].results[]' "$sarifFile" | while read -r result; do
           ruleId=$(echo $result | jq -r '.ruleId')
           message=$(echo $result | jq -r '.message.text')
-        
-        echo ""
-        echo "=============="
-        echo "Processing ruleId: $ruleId, message: $message"
-        echo "=============="
-        echo ""
+
+        # Optional, if you wish to see the parsed data object from the SARIF file
+        # echo ""
+        # echo "=============="
+        # echo "Processing ruleId: $ruleId, message: $message"
+        # echo "=============="
+        # echo ""
 
           # Create a JSON payload for the Azure DevOps REST API
-          # Note the single quotes around the JSON payload to ensure proper handling
+          # Note the single quotes around the JSON payload to ensure proper handling! 
           json=$(jq -n --arg ruleId "$ruleId" --arg message "$message" '
             [
               {"op": "add", "path": "/fields/System.Title", "value": $ruleId},
