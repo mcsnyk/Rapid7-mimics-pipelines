@@ -71,16 +71,17 @@ jobs:
     displayName: 'Install jq'
 
   - script: |
-      # Azure DevOps details
+      # Azure DevOps details - please use your organization and project names:
       organization="Rapid7Demo"
       project="Demo"
       pat="$(PAT)"
 
-      # Pay attention to the correct type of the workitem here in the URL
+      # Pay attention to the correct type of the workitem here in the URL ($Issue, $Task...)
+      # Please also note, I used the api-version 6.0, the newest stable version is 7.1
       url="https://dev.azure.com/${organization}/${project}/_apis/wit/workitems/\$Issue?api-version=6.0"
       # url="https://dev.azure.com/${organization}/${project}/_apis/wit/workitems/\$Task?api-version=6.0"
   
-      # Path to the SARIF file
+      # Path to the SARIF file - if you used a different name on line 57 (--report-name flag), please edit the line below
       sarifFile="$(System.DefaultWorkingDirectory)/mimics-reports/results-rapid7_iac.sarif"
   
       # Ensure the SARIF file exists and then process it
@@ -92,7 +93,7 @@ jobs:
           ruleId=$(echo $result | jq -r '.ruleId')
           message=$(echo $result | jq -r '.message.text')
 
-        # Optional, if you wish to see the parsed data object from the SARIF file
+        # Optional, if you wish to see the parsed data object from the SARIF file:
         # echo ""
         # echo "=============="
         # echo "Processing ruleId: $ruleId, message: $message"
@@ -110,7 +111,7 @@ jobs:
             ]
         ')
         
-          # Use curl to invoke the Azure DevOps REST API and create a new work item
+          # Use curl to invoke the Azure DevOps REST API and create a new work item:
           curl -X POST -H "Content-Type: application/json-patch+json" -H "Authorization: Basic $(echo -n ":$PAT" | base64)" -d "$json" "$url"
         done      
       else
