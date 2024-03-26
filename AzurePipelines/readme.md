@@ -63,7 +63,7 @@ InsightCloudSec's mimICS tool meticulously scans Infrastructure as Code (IaC) co
 Just to get an insight into the SARIF file to be parsed:<br/>
 
 <details>
-<summary>Inside of the SARIF file - the <b>rules object</b> looks like this - we will not use this this time</summary>
+<summary>Inside of the SARIF file - the <b>rules object</b> looks like this - example, we will not use this this time</summary>
 
 ```json
 "rules": [
@@ -87,7 +87,7 @@ Just to get an insight into the SARIF file to be parsed:<br/>
 </details>
          
 <details>
-<summary>Inside of the SARIF file - the <b>invocation object</b>b> looks like this - we will also not use this this time</summary>
+<summary>Inside of the SARIF file - the <b>invocations object</b> looks like this - example, we will also not use this this time</summary>
     
 ```json
 "invocations": [
