@@ -7,8 +7,7 @@ pool:
 variables:
   terraformVersion: '0.14.11' # Define the Terraform version to ensure consistency across runs
   terraformDownloadUrl: 'https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip' # URL for Terraform download
-  mimicsVersion: '1.2.5' # Define the Mimics tool version
-  mimicsDownloadUrl: 'https://artifacts.rapid7.com/cloudsec/mimics/v$(mimicsVersion)/mimics_$(mimicsVersion)_linux_amd64' # URL for Mimics download
+  mimicsDownloadUrl: 'https://artifacts.rapid7.com/cloudsec/mimics/latest/mimics_latest_linux_amd64' # URL for Mimics download
 
 jobs:
 - job: Rapid7_IaC_Scanner_and_BoardPush
