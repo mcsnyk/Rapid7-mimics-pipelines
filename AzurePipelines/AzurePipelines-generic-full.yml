@@ -1,0 +1,159 @@
+trigger:
+- '*' # Trigger the pipeline on any push to the repository
+
+pool:
+  vmImage: 'ubuntu-latest' # Define the virtual machine image to use for the pipeline
+
+variables:
+  terraformVersion: '0.14.11' # Define the Terraform version to ensure consistency across runs
+  terraformDownloadUrl: 'https://releases.hashicorp.com/terraform/$(terraformVersion)/terraform_$(terraformVersion)_linux_amd64.zip' # URL for Terraform download
+  mimicsVersion: '1.2.5' # Define the Mimics tool version
+  mimicsDownloadUrl: 'https://artifacts.rapid7.com/cloudsec/mimics/v$(mimicsVersion)/mimics_$(mimicsVersion)_linux_amd64' # URL for Mimics download
+
+jobs:
+- job: Rapid7_IaC_Scanner_and_BoardPush
+  displayName: 'Rapid7 IaC scanner'
+  steps:
+  - task: UsePythonVersion@0
+    inputs:
+      versionSpec: '3.x'
+      addToPath: true
+    displayName: 'Setup Python' # Ensures Python 3.x is installed and available in the path for any scripts that may require it
+
+  - task: TerraformInstaller@0
+    inputs:
+      terraformVersion: '$(terraformVersion)'
+    displayName: 'Install Terraform' # Automatically downloads and installs the specified version of Terraform
+
+  - script: |
+      # This step illustrates how the AWS CLI can be configured in an Azure DevOps pipeline.
+      # In a production environment, it's recommended to use Azure DevOps service connections
+      # for AWS to manage credentials securely rather than hardcoding them in the pipeline script.
+      # Below are commented-out commands showing how you might configure the AWS CLI manually
+      # for educational purposes. In practice, prefer service connections for enhanced security.
+      #
+      # aws configure set aws_access_key_id $(AWS_ACCESS_KEY_ID)
+      # aws configure set aws_secret_access_key $(AWS_SECRET_ACCESS_KEY)
+      # aws configure set region eu-central-1
+      
+      # This echo statement serves as a placeholder to indicate that in a real scenario,
+      # the AWS CLI should be configured through secure means, such as Azure DevOps service connections.
+      echo "AWS CLI is configured via service connection."
+    displayName: 'Configure AWS CLI' # Reminder: Utilize Azure DevOps service connections for secure AWS CLI configuration
+
+
+  - script: |
+      terraform init
+      terraform plan -out=tf.plan
+      terraform show -json tf.plan > $(System.DefaultWorkingDirectory)/plan.json
+    displayName: 'Initialize Terraform & Create Plan' # Initializes Terraform and creates a plan. The plan is converted to JSON format for further processing
+
+  - script: |
+      wget $(mimicsDownloadUrl) -O $(Agent.ToolsDirectory)/mimics
+      chmod +x $(Agent.ToolsDirectory)/mimics
+    displayName: 'Install Mimics-binary' # Downloads and installs the Mimics tool (binary executable) for infrastructure as code (IaC) scanning
+
+  - script: |
+      mkdir -p $(System.DefaultWorkingDirectory)/mimics-reports
+      $(Agent.ToolsDirectory)/mimics scan \
+        $(System.DefaultWorkingDirectory) \
+        --api-key $(API_KEY) \
+        --base-url $(BASE_URL) \
+        --no-verify \
+        --ics-config "ICS Demo NIST PRD Fail" \
+        --log-format json \
+        --report-formats all \
+        --report-name results-rapid7_iac \
+        --report-path "$(System.DefaultWorkingDirectory)/mimics-reports" \
+        --no-fail \
+        --verbose
+    displayName: 'Scan IaC files with Mimics'
+
+
+  # - script: |
+  #     # Alternatively: Use Docker to run the Mimics tool for scanning. This approach uses a Docker container to
+  #     # isolate the scanning environment and dependencies. It mounts the current working directory
+  #     # into the container to allow access to the Terraform plan and output the reports to a local directory.
+  #     docker run \
+  #     -v $(System.DefaultWorkingDirectory):/data \
+  #     -e MIMICS_BASE_URL=$(BASE_URL) \
+  #     -e MIMICS_API_KEY=$(API_KEY) \
+  #     public.ecr.aws/rapid7-insightcloudsec/ics/mimics:latest scan /data/plan.json \
+  #     --no-verify \
+  #     --ics-config "ICS Demo NIST PRD Fail" \
+  #     --log-format json \
+  #     --report-formats all \
+  #     --report-name results-rapid7_iac \
+  #     --report-path "/data/mimics-reports" \
+  #     --save-report \
+  #     --no-fail \
+  #     --verbose
+  #   displayName: 'Scan IaC files with Mimics (Docker)'
+
+  
+  - script: |
+      sudo apt-get update
+      sudo apt-get install -y jq
+    displayName: 'Install jq' # Installs jq, a lightweight and flexible command-line JSON processor
+
+  - script: |
+      # Azure DevOps details - configure with your organization and project names
+      organization="Rapid7Demo"
+      project="Demo"
+      pat="$(PAT)" # Ensure PAT is stored securely as a secret variable
+
+      # Construct the URL for API requests, choosing the correct work item type and API version.
+      url="https://dev.azure.com/${organization}/${project}/_apis/wit/workitems/\$Issue?api-version=6.0"
+      # Alternative URL for creating tasks, if needed.
+      # url="https://dev.azure.com/${organization}/${project}/_apis/wit/workitems/\$Task?api-version=6.0"
+  
+      # Specify the path to the SARIF file generated by the previous steps
+      sarifFile="$(System.DefaultWorkingDirectory)/mimics-reports/results-rapid7_iac.sarif"
+  
+      # Check for the existence of the SARIF file and process it
+      if [ -f "$sarifFile" ]; then
+        echo "Found SARIF file: $sarifFile"
+
+        # Iterate through each result in the SARIF file, extracting relevant details
+        jq -c '.runs[].results[]' "$sarifFile" | while read -r result; do
+          ruleId=$(echo $result | jq -r '.ruleId')
+          message=$(echo $result | jq -r '.message.text')
+
+          # For debugging or detailed output, uncomment the following lines:
+          # echo ""
+          # echo "=============="
+          # echo "Processing ruleId: $ruleId, message: $message"
+          # echo "=============="
+          # echo ""
+
+          # Prepare a JSON payload for creating a new work item via the Azure DevOps REST API
+          json=$(jq -n --arg ruleId "$ruleId" --arg message "$message" '
+            [
+              {"op": "add", "path": "/fields/System.Title", "value": $ruleId},
+              {"op": "add", "path": "/fields/System.Description", "value": $message},
+              {"op": "add", "path": "/fields/System.State", "value": "To Do"},
+              {"op": "add", "path": "/fields/System.AreaPath", "value": "Demo"}
+            ]
+          ')
+
+          # Make an API call to create a new work item with the prepared payload
+          curl -X POST -H "Content-Type: application/json-patch+json" -H "Authorization: Basic $(echo -n ":$PAT" | base64)" -d "$json" "$url"
+        done
+      else
+        echo "SARIF file not found: $sarifFile"
+      fi
+    displayName: 'Process SARIF and Create Azure Board Work Items'
+    env:
+      PAT: $(PAT) # Pass the Personal Access Token (PAT) securely as an environment variable
+
+  - task: PublishBuildArtifacts@1
+    displayName: 'Publish Scan Artifacts'
+    inputs:
+      pathtoPublish: '$(System.DefaultWorkingDirectory)/mimics-reports'
+      artifactName: 'results-rapid7_iac' # Publishes the scan reports as build artifacts for later access
+
+  - task: PublishHtmlReport@1
+    condition: succeededOrFailed()
+    inputs:
+      reportDir: $(System.DefaultWorkingDirectory)/mimics-reports
+      tabName: 'R7 IaC Scan Results' # Publishes the HTML scan report to the Azure DevOps build summary for easy access
