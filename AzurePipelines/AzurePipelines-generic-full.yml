@@ -13,33 +13,41 @@ jobs:
 - job: Rapid7_IaC_Scanner_and_BoardPush
   displayName: 'Rapid7 IaC scanner'
   steps:
-  - task: UsePythonVersion@0
-    inputs:
-      versionSpec: '3.x'
-      addToPath: true
-    displayName: 'Setup Python' # Ensures Python 3.x is installed and available in the path for any scripts that may require it
-
-  - task: TerraformInstaller@0
-    inputs:
-      terraformVersion: '$(terraformVersion)'
-    displayName: 'Install Terraform' # Automatically downloads and installs the specified version of Terraform
-
   - script: |
       # This step illustrates how the AWS CLI can be configured in an Azure DevOps pipeline.
       # In a production environment, it's recommended to use Azure DevOps service connections
       # for AWS to manage credentials securely rather than hardcoding them in the pipeline script.
       # Below are commented-out commands showing how you might configure the AWS CLI manually
       # for educational purposes. In practice, prefer service connections for enhanced security.
-      #
-      # aws configure set aws_access_key_id $(AWS_ACCESS_KEY_ID)
-      # aws configure set aws_secret_access_key $(AWS_SECRET_ACCESS_KEY)
-      # aws configure set region eu-central-1
+
+      aws configure set aws_access_key_id $(AWS_ACCESS_KEY_ID)
+      aws configure set aws_secret_access_key $(AWS_SECRET_ACCESS_KEY)
+      aws configure set region eu-central-1
       
       # This echo statement serves as a placeholder to indicate that in a real scenario,
       # the AWS CLI should be configured through secure means, such as Azure DevOps service connections.
       echo "AWS CLI is configured via service connection."
     displayName: 'Configure AWS CLI' # Reminder: Utilize Azure DevOps service connections for secure AWS CLI configuration
 
+  - script: |      
+      # Check if Terraform is already installed, and download it if necessary
+      if [ ! -f /usr/local/bin/terraform ]; then
+          wget $(terraformDownloadUrl)
+      else
+          mv /usr/local/bin/terraform /usr/local/bin/terraform.old
+          wget $(terraformDownloadUrl)
+      fi
+
+      # Unzip and install Terraform
+      unzip terraform_0.14.11_linux_amd64.zip -d terraform_temp
+      chmod +x terraform_temp/terraform
+      mv terraform_temp/terraform /usr/local/bin/
+
+      # Initialize Terraform, create a plan, and convert it to JSON
+      terraform init
+      terraform plan -out tf.plan
+      terraform show -json tf.plan > $(System.DefaultWorkingDirectory)/plan.json
+    displayName: 'Install and initialize Terraform'
 
   - script: |
       terraform init
@@ -64,6 +72,7 @@ jobs:
         --report-formats all \
         --report-name results-rapid7_iac \
         --report-path "$(System.DefaultWorkingDirectory)/mimics-reports" \
+        --save-report \
         --no-fail \
         --verbose
     displayName: 'Scan IaC files with Mimics'
@@ -103,6 +112,7 @@ jobs:
 
       # Construct the URL for API requests, choosing the correct work item type and API version.
       url="https://dev.azure.com/${organization}/${project}/_apis/wit/workitems/\$Issue?api-version=6.0"
+      
       # Alternative URL for creating tasks, if needed.
       # url="https://dev.azure.com/${organization}/${project}/_apis/wit/workitems/\$Task?api-version=6.0"
   
@@ -145,14 +155,16 @@ jobs:
     env:
       PAT: $(PAT) # Pass the Personal Access Token (PAT) securely as an environment variable
 
+  # Publish additional files (results-rapid7_iac artifacts)
   - task: PublishBuildArtifacts@1
     displayName: 'Publish Scan Artifacts'
     inputs:
       pathtoPublish: '$(System.DefaultWorkingDirectory)/mimics-reports'
       artifactName: 'results-rapid7_iac' # Publishes the scan reports as build artifacts for later access
 
+  # Publish the HTML report using the PublishHtmlReport task
   - task: PublishHtmlReport@1
     condition: succeededOrFailed()
     inputs:
-      reportDir: $(System.DefaultWorkingDirectory)/mimics-reports
+      reportDir: $(System.DefaultWorkingDirectory)/mimics-reports/results-rapid7_iac.html
       tabName: 'R7 IaC Scan Results' # Publishes the HTML scan report to the Azure DevOps build summary for easy access
