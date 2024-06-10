@@ -6,7 +6,7 @@ stages:
 variables:
   AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-  AWS_DEFAULT_REGION: #Your AWS region 
+  AWS_DEFAULT_REGION: #<"Your AWS region"> 
 
 Installing_Scanner_Dependencies:
   stage: configure
@@ -19,6 +19,8 @@ Installing_Scanner_Dependencies:
     - echo "Configured AWS CLI"
   only:
     - main
+  # Alternatively, instead of using a password and username to configure the AWS CLI, we can
+  # connect to AWS via OIDC using id_tokens: https://www.ventx.de/blog/post/oidc_gitlab_aws_new/index.html
 
   before_script:
     - if [ ! -f /usr/local/bin/terraform ]; then
